@@ -8,6 +8,7 @@
   "wallpaper_order": "sequential",
   "wallpaper_captions": false,
   "wallpaper_dim": 12,
+  "wallpaper_true_color": true,
   "dock_glass": true,
   "dock_opacity": 40,
   "dock_even_padding": true,

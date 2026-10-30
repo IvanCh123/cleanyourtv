@@ -107,8 +107,12 @@ Then, on the owner's request:
   kinds `GIFT` and `SNOWFLAKE`), snow over the first Home of the day (`PetalShowerView.setSnow`), "Merry Christmas"
   in the 12 languages that have the Halloween greeting, holly-red accent `#E8433A` (`Festival.CHRISTMAS`, `HOLLY`).
   Icons are Fluent Emoji 3D (MIT), 72 px WebP, noted in `launcher/ICONS-LICENSE-FLUENT-EMOJI.txt`.
-- **`themes/christmas/`**: 8 Wikimedia Commons photos (PD, CC BY, CC BY-SA; `CREDITS.md`), a new one every 30 min,
-  frosted dock, skin until 2027-01-02. Screenshot from this TV.
+- **`themes/christmas/`**: four flat illustrations drawn in code by `themes/christmas/make_wallpapers.py` (CC0, in the
+  style of Halloween's haunted house; the owner did not like the photos tried first): a cabin, a decorated tree with
+  presents and a snowman, a village with string lights, Santa's sleigh across the moon. Lifted so each scene ends where
+  the dock begins and the moon stays under the top bar, no snow baked in (the launcher plays it), light dither noise
+  and `wallpaper_true_color` on, because the default 16-bit decode banded the moon's glow into rings on this TV.
+  A new one every 30 min, frosted dock, skin until 2027-01-02. Screenshot from this TV.
 - **Themes chooser** is now the same glass menu as the Settings long-press menu (under the Settings pill), with a
   green check on the current theme, instead of an Android AlertDialog. `ThemePicker` holds only the logic now.
 - **Reorder button** off in `themes/japan/config.json` (Reorder apps stays in the Settings long-press menu).
