@@ -2912,7 +2912,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      * Swaps the pill icons for the festival's: a bell for Inputs that swings when focused, a diya for the
      * network whose flame follows the connection, and a marigold for Settings that turns when focused. Halloween
      * has its own: a bat for Inputs that flaps, a jack-o'-lantern whose face glows while online, and a ghost for
-     * Settings that floats up.
+     * Settings that floats up. Christmas: a gift for Inputs that hops, a tree whose lights are on while online, and
+     * a snowflake for Settings that turns.
      */
     private void applyFestiveSkin(TextView inputs, TextView settings) {
         if (festival.isHalloween()) {
@@ -2928,6 +2929,22 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             setFestiveIcon(settings, ghost);
             addFocusAction(inputs, bat::nudge);
             addFocusAction(settings, ghost::nudge);
+            return;
+        }
+        if (festival.isChristmas()) {
+            SpookyIconDrawable gift = new SpookyIconDrawable(getResources(), density, SpookyIconDrawable.GIFT);
+            SpookyIconDrawable flake = new SpookyIconDrawable(getResources(), density, SpookyIconDrawable.SNOWFLAKE);
+            JackOLanternDrawable tree = new JackOLanternDrawable(getResources(), density,
+                    R.drawable.christmas_tree_dark, R.drawable.christmas_tree_lit);
+            gift.setReducedMotion(reducedMotion);
+            flake.setReducedMotion(reducedMotion);
+            tree.setReducedMotion(reducedMotion);
+            lamp = tree;
+            setFestiveIcon(inputs, gift);
+            setFestiveIcon(btnWifi, tree);
+            setFestiveIcon(settings, flake);
+            addFocusAction(inputs, gift::nudge);
+            addFocusAction(settings, flake::nudge);
             return;
         }
         bell = new BellDrawable(density);
@@ -2969,9 +2986,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return;
         }
         PetalShowerView shower = new PetalShowerView(this);
+        boolean snow = festival.isChristmas();
+        shower.setSnow(snow);
         root.addView(shower, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        shower.play(60, 2200, () -> root.removeView(shower));
+        shower.play(snow ? 110 : 60, snow ? 4200 : 2200, () -> root.removeView(shower));
     }
 
     private static int liftTowardsWhite(int argb, float amount) {
@@ -3526,7 +3545,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Theme bundles stored under files/themes/ (tools/theme.sh --as <name>). With none there the list would
         // offer only Default, so the row stays off the menu until one exists.
         if (themePicker && !ThemeDir.bundles(Config.dir(this)).isEmpty()) {
-            addSettingsMenuRow(rows, popup, R.string.themes_label, () -> ThemePicker.show(this, this::recreate));
+            addSettingsMenuRow(rows, popup, R.string.themes_label, () -> root.post(this::showThemesMenu));
         }
         // Firmware that ships its own settings app next to the AOSP one (Xiaomi China is one): the
         // vendor app holds pages the AOSP settings has no row for, such as Account & Security with
@@ -3548,6 +3567,43 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         dropIn(popup, panel, anchor, getResources().getBoolean(R.bool.rtl_menu_bar)
                 ? Gravity.START : Gravity.END);
         rows.getChildAt(0).requestFocus();
+    }
+
+    /**
+     * Settings menu, then Themes: the same glass menu under the Settings pill, listing Default and each stored
+     * bundle, with a check on the one Home is showing. Picking another saves it and rebuilds Home.
+     */
+    private void showThemesMenu() {
+        if (isFinishing() || isDestroyed()) return;
+        File themes = Config.dir(this);
+        List<String> bundles = ThemeDir.bundles(themes);
+        String current = ThemePicker.current(this, themes);
+        View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
+        LinearLayout rows = panel.findViewById(R.id.rows);
+        PopupWindow popup = glassPopup(panel, (int) (200 * density));
+        View focus = addThemeRow(rows, popup, getString(R.string.themes_default), "", current, themes);
+        for (String bundle : bundles) {
+            View row = addThemeRow(rows, popup, ThemePicker.label(bundle), bundle, current, themes);
+            if (bundle.equals(current)) focus = row;
+        }
+        panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        popup.setWidth(Math.max((int) (200 * density), panel.getMeasuredWidth()));
+        dropIn(popup, panel, findViewById(R.id.btnSettings), getResources().getBoolean(R.bool.rtl_menu_bar)
+                ? Gravity.START : Gravity.END);
+        focus.requestFocus();
+    }
+
+    private View addThemeRow(LinearLayout rows, PopupWindow popup, String title, String bundle, String current, File themes) {
+        View row = addMenuRow(rows, popup, title, () -> {
+            if (ThemePicker.choose(this, themes, bundle)) recreate();
+        });
+        ImageView check = row.findViewById(R.id.icon);
+        check.setImageResource(R.drawable.library_check);
+        // The row tints its icon with the text colour, which would flatten the green disc and white tick.
+        check.setImageTintList(null);
+        // Every row keeps the check's room, so the names line up whichever one is ticked.
+        check.setVisibility(bundle.equals(current) ? View.VISIBLE : View.INVISIBLE);
+        return row;
     }
 
     /** A tile configured with launch_actions "input:<id>" (config.xml): switch to that TV input directly,
@@ -3613,6 +3669,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private void addSettingsMenuRow(LinearLayout rows, PopupWindow popup, int title, Runnable action) {
+        addMenuRow(rows, popup, getString(title), action);
+    }
+
+    private View addMenuRow(LinearLayout rows, PopupWindow popup, CharSequence title, Runnable action) {
         View row = getLayoutInflater().inflate(R.layout.item_input, rows, false);
         row.findViewById(R.id.icon).setVisibility(View.GONE);
         row.findViewById(R.id.dot).setVisibility(View.GONE);
@@ -3639,6 +3699,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return true;
         });
         rows.addView(row);
+        return row;
     }
 
     /**

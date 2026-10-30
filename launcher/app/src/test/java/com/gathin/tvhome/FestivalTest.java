@@ -63,9 +63,23 @@ public class FestivalTest {
     }
 
     @Test
+    public void christmasHasItsOwnSkinAndHollyAccent() {
+        Festival f = Festival.parse("Christmas", "2027-01-02", "", "");
+        assertTrue(f.isChristmas());
+        assertFalse(f.isHalloween());
+        assertTrue(f.active(LocalDate.of(2026, 12, 25)));
+        assertTrue(f.active(LocalDate.of(2027, 1, 2)));
+        assertFalse(f.active(LocalDate.of(2027, 1, 3)));
+        assertEquals(Festival.HOLLY, f.accentColor());
+        assertEquals(0xFF1E7A3C, Festival.parse("christmas", "", "", "#1E7A3C").accentColor());
+    }
+
+    @Test
     public void otherFestivalsKeepTheDiyaSkin() {
         assertFalse(Festival.parse("dussehra", "", "", "").isHalloween());
         assertFalse(Festival.parse("onam", "", "", "").isHalloween());
         assertFalse(Festival.NONE.isHalloween());
+        assertFalse(Festival.parse("halloween", "", "", "").isChristmas());
+        assertFalse(Festival.NONE.isChristmas());
     }
 }

@@ -3,6 +3,6 @@
   "wallpaper_dim": 50,
   "ambient_glow": false,
   "dock_opacity": 70,
-  "reorder_button": true,
+  "reorder_button": false,
   "tile_menu": true
 }

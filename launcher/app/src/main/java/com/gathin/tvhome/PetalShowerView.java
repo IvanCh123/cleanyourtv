@@ -15,7 +15,8 @@ import java.util.Random;
  * just above the top edge, gathers speed as it falls, sways from side to side, spins, flips over (showing its
  * darker back) and fades out over the last quarter of its fall. Everything finishes within the given duration,
  * then the callback runs on the main thread. The view takes no focus, clicks or accessibility, uses a hardware
- * layer only while playing, and allocates nothing per frame.
+ * layer only while playing, and allocates nothing per frame. {@link #setSnow(boolean)} turns it into the
+ * Christmas skin's snowfall: soft white flakes, each a bright core in a faint halo, drifting down more slowly.
  */
 public final class PetalShowerView extends View {
 
@@ -38,7 +39,7 @@ public final class PetalShowerView extends View {
             rot0 = new float[0], spin = new float[0], flipFreq = new float[0], flipPhase = new float[0];
     private int[] color = new int[0], shape = new int[0];
 
-    private boolean playing;
+    private boolean playing, snow;
     private long start, duration;
     private Runnable onDone;
     private final Runnable finish = this::finish;
@@ -73,6 +74,11 @@ public final class PetalShowerView extends View {
         vein.setColor(EDGE);
     }
 
+    /** Snowflakes instead of petals, from the next {@link #play} on. */
+    public void setSnow(boolean snow) {
+        this.snow = snow;
+    }
+
     /**
      * Plays a shower of {@code petals} petals lasting {@code durationMs}, then runs {@code done} on the main
      * thread. Playing again before the last shower ends finishes that one first (its callback runs).
@@ -102,6 +108,12 @@ public final class PetalShowerView extends View {
             flipPhase[i] = rnd.nextFloat() * (float) TAU;
             color[i] = rnd.nextInt(COLORS.length);
             shape[i] = rnd.nextInt(shapes.length);
+            if (snow) {
+                size[i] = 3f + rnd.nextFloat() * 5f;        // dp across the core
+                drop[i] = 1f + rnd.nextFloat() * 0.15f;     // the whole height: snow does not stop mid-air
+                swayAmp[i] = 6f + rnd.nextFloat() * 14f;
+                swayFreq[i] = 0.25f + rnd.nextFloat() * 0.35f;
+            }
         }
         playing = true;
         start = SystemClock.uptimeMillis();
@@ -138,6 +150,19 @@ public final class PetalShowerView extends View {
             float p = (elapsed - delay[i]) / life[i];
             if (p <= 0f || p >= 1f) continue;
             float len = size[i] * density;
+            if (snow) {
+                // steady, like a flake at its terminal speed; it fades in at the top and out near the bottom
+                float y = -len * 2f + (h * drop[i] + len * 2f) * p;
+                float x = xFrac[i] * w + swayAmp[i] * density
+                        * (float) Math.sin(TAU * swayFreq[i] * secs + swayPhase[i]);
+                int a = p < 0.08f ? (int) (230 * p / 0.08f) : p > 0.8f ? (int) (230 * (1f - (p - 0.8f) / 0.2f)) : 230;
+                fill.setColor(0xFFFFFFFF);
+                fill.setAlpha(a / 4);
+                c.drawCircle(x, y, len, fill);
+                fill.setAlpha(a);
+                c.drawCircle(x, y, len * 0.5f, fill);
+                continue;
+            }
             float fall = (p + p * p) * 0.5f;               // gathers speed, like a petal against the air
             float y = -len * 1.5f + (h * drop[i] + len * 1.5f) * fall;
             double sway = TAU * swayFreq[i] * secs + swayPhase[i];

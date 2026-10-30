@@ -10,7 +10,7 @@ import java.util.Locale;
  * A festive skin set by a theme's config.json: {@code festival} (or {@code seasonal_skin}), {@code festival_until},
  * {@code greeting} and {@code accent_color}. While it is active the pills get festive icons (a diya for the
  * network, a bell for Inputs, a marigold for Settings; for {@code halloween} a jack-o'-lantern, a bat and a
- * ghost), the greeting is replaced and the focus glow takes the accent colour. It switches itself off after
+ * ghost; for {@code christmas} a tree whose lights follow the network, a gift and a snowflake), the greeting is replaced and the focus glow takes the accent colour. It switches itself off after
  * {@code festival_until}, so nobody has to remember to undo it.
  */
 final class Festival {
@@ -25,6 +25,12 @@ final class Festival {
 
     /** Pumpkin orange, Halloween's accent when the theme names no colour. */
     static final int PUMPKIN = 0xFFFF7A1A;
+
+    /** The festival with the tree, gift and snowflake icons and a snowfall on the first Home. */
+    static final String CHRISTMAS = "christmas";
+
+    /** Holly red, Christmas's accent when the theme names no colour. */
+    static final int HOLLY = 0xFFE8433A;
 
     /** Lower-case festival name, or "" for none. */
     final String name;
@@ -76,6 +82,8 @@ final class Festival {
                 return res.getString(R.string.festival_diwali_greeting);
             case HALLOWEEN:
                 return res.getString(R.string.festival_halloween_greeting);
+            case CHRISTMAS:
+                return res.getString(R.string.festival_christmas_greeting);
             default:
                 return "";
         }
@@ -83,12 +91,17 @@ final class Festival {
 
     int accentColor() {
         if (accent != 0) return accent;
-        return isHalloween() ? PUMPKIN : DEFAULT_ACCENT;
+        return isHalloween() ? PUMPKIN : isChristmas() ? HOLLY : DEFAULT_ACCENT;
     }
 
     /** Whether this is the Halloween skin rather than the diya, bell and marigold. */
     boolean isHalloween() {
         return HALLOWEEN.equals(name);
+    }
+
+    /** Whether this is the Christmas skin: tree, gift, snowflake and snow. */
+    boolean isChristmas() {
+        return CHRISTMAS.equals(name);
     }
 
     /** {@code #RRGGBB} to an opaque colour, anything else to 0. */

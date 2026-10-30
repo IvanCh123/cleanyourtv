@@ -19,6 +19,7 @@
     <string name="festival_dussehra_greeting">Glad Dussehra</string>
     <string name="festival_diwali_greeting">Glad Diwali</string>
     <string name="festival_halloween_greeting">Glad halloween</string>
+    <string name="festival_christmas_greeting">God jul</string>
     <string name="ethernet">Ethernet</string>
     <string name="offline">Frånkopplad</string>
     <string name="not_available">Inte tillgängligt på den här TV:n</string>

@@ -19,15 +19,16 @@ import androidx.annotation.Nullable;
 
 /**
  * A Halloween pill icon from a picture (Microsoft's Fluent Emoji 3D, MIT): a bat for Inputs that flaps its wings
- * twice when focused, or a ghost for Settings that drifts up and settles. The motion is a short scale or
+ * twice when focused, or a ghost for Settings that drifts up and settles. The Christmas skin uses it too: a gift
+ * for Inputs that hops and wobbles, and a snowflake for Settings that turns a sixth of a turn. The motion is a short scale or
  * offset of the same picture, played once per {@link #nudge()}; reduced motion leaves it still.
  */
 public final class SpookyIconDrawable extends Drawable {
 
-    static final int BAT = 0, GHOST = 1;
+    static final int BAT = 0, GHOST = 1, GIFT = 2, SNOWFLAKE = 3;
 
     private static final float BOX_DP = 24f;
-    private static final long BAT_MS = 520, GHOST_MS = 900;
+    private static final long BAT_MS = 520, GHOST_MS = 900, GIFT_MS = 700, SNOWFLAKE_MS = 1000;
 
     private final int kind;
     private final float density;
@@ -42,10 +43,11 @@ public final class SpookyIconDrawable extends Drawable {
     public SpookyIconDrawable(Resources res, float density, int kind) {
         this.kind = kind;
         this.density = density;
-        bitmap = BitmapFactory.decodeResource(res,
-                kind == BAT ? R.drawable.halloween_bat : R.drawable.halloween_ghost);
+        bitmap = BitmapFactory.decodeResource(res, kind == BAT ? R.drawable.halloween_bat
+                : kind == GHOST ? R.drawable.halloween_ghost
+                : kind == GIFT ? R.drawable.christmas_gift : R.drawable.christmas_snowflake);
         animator = ValueAnimator.ofFloat(0f, 1f);
-        animator.setDuration(kind == BAT ? BAT_MS : GHOST_MS);
+        animator.setDuration(kind == BAT ? BAT_MS : kind == GHOST ? GHOST_MS : kind == GIFT ? GIFT_MS : SNOWFLAKE_MS);
         animator.setInterpolator(new LinearInterpolator());
         animator.addUpdateListener(a -> {
             t = (float) a.getAnimatedValue();
@@ -84,6 +86,15 @@ public final class SpookyIconDrawable extends Drawable {
                 sy = 1f - 0.28f * Math.abs(beat);
                 sx = 1f + 0.06f * Math.abs(beat);
                 dy = -1.5f * density * (float) Math.sin(t * Math.PI);
+            } else if (kind == GIFT) {
+                // a small hop with a wobble that dies away, like a parcel someone is shaking
+                dy = -2.5f * density * (float) Math.sin(t * Math.PI);
+                rot = 12f * (float) Math.sin(t * 2 * Math.PI * 3) * (1f - t);
+            } else if (kind == SNOWFLAKE) {
+                // a sixth of a turn, easing out: the six-fold flake ends looking exactly as it began
+                float e = 1f - (1f - t) * (1f - t);
+                rot = 60f * e;
+                sx = sy = 1f + 0.08f * (float) Math.sin(t * Math.PI);
             } else {
                 // drifts up about 3 dp, tilting slightly, then sinks back
                 float up = (float) Math.sin(t * Math.PI);

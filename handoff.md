@@ -93,3 +93,41 @@ authorisations were revoked, and the new computer makes its own key.
 `com.google.android.apps.tv.launcherx`. The recovery record from `disable.ps1` is in `~/.cleanyourtv/` on the
 work PC only, so on another computer restore falls back to enabling the whole list. That is fine here: nothing
 was disabled before. Or use `work/restore-tv.ps1`, which also switches off the key helper and resets DNS.
+
+## 29 October 2026, second session (Windows PC)
+
+Reviewed `977f6935` (theme picker, done on the Mac): complete. Unit tests, lint and the release build pass. The
+shell-driven Python suites (`test_theme_one_argument`, `test_theme_push_ownership`, ...) need symlinks and a POSIX
+shell, so they only run on macOS/Linux or in CI.
+
+Then, on the owner's request:
+- **Christmas skin** (`seasonal_skin: "christmas"`, built into the launcher like Halloween): a Christmas tree on the
+  network pill whose lights are on while online and off when the connection drops (the pumpkin's `JackOLanternDrawable`
+  with two new pictures), a gift for Inputs that hops and a snowflake for Settings that turns (`SpookyIconDrawable`
+  kinds `GIFT` and `SNOWFLAKE`), snow over the first Home of the day (`PetalShowerView.setSnow`), "Merry Christmas"
+  in the 12 languages that have the Halloween greeting, holly-red accent `#E8433A` (`Festival.CHRISTMAS`, `HOLLY`).
+  Icons are Fluent Emoji 3D (MIT), 72 px WebP, noted in `launcher/ICONS-LICENSE-FLUENT-EMOJI.txt`.
+- **`themes/christmas/`**: 8 Wikimedia Commons photos (PD, CC BY, CC BY-SA; `CREDITS.md`), a new one every 30 min,
+  frosted dock, skin until 2027-01-02. Screenshot from this TV.
+- **Themes chooser** is now the same glass menu as the Settings long-press menu (under the Settings pill), with a
+  green check on the current theme, instead of an Android AlertDialog. `ThemePicker` holds only the logic now.
+- **Reorder button** off in `themes/japan/config.json` (Reorder apps stays in the Settings long-press menu).
+- `themes/japan/` got its `screenshot.jpg` and a row in `themes/README.md`; front-page theme counts are 14.
+  `docs/switches/theme_picker.jpg` shows the new chooser.
+- APK 586,445 B of the 589,824 B gate: about 3.3 KB left for any further launcher change.
+
+**Signing key, read this before installing from the Mac.** Release builds are signed with each computer's
+`~/.android/debug.keystore`. The Mac's build was on the TV, so this PC could not update it; with the owner's OK the
+launcher was uninstalled and reinstalled from this PC (Google TV's launcher re-enabled as a safety net in between,
+then disabled again by `build-and-install`). Its TV-side settings were reset; the themes were pushed back: japan as
+the root theme, bundles `christmas`, `halloween`, `japan`; Default is selected. **The TV's launcher is now signed
+with the Windows PC's key**, so a Mac build will fail with `INSTALL_FAILED_UPDATE_INCOMPATIBLE`. Copy the PC's
+`C:\Users\<user>\.android\debug.keystore` to the Mac's `~/.android/debug.keystore` (back up the Mac's first) so both
+can install.
+
+ADB note: this PC's key had been revoked; Google's `adb connect` brought up the authorisation (`TV_ADB_BINARY`
+works too, but `theme.ps1` picture uploads fail through it with "shell command too long", so use `tv.py`'s own client
+once the key is authorised). USB/network debugging is on at the end of this session.
+
+Not verified: the tree going dark offline (needs the network to drop), and the gift/snowflake focus motion on a
+real remote press (injected keys only).

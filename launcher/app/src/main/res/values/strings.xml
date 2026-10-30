@@ -19,6 +19,7 @@
     <string name="festival_dussehra_greeting">Happy Dussehra</string>
     <string name="festival_diwali_greeting">Happy Diwali</string>
     <string name="festival_halloween_greeting">Happy Halloween</string>
+    <string name="festival_christmas_greeting">Merry Christmas</string>
     <string name="ethernet">Ethernet</string>
     <string name="offline">Offline</string>
     <string name="not_available">Not available on this TV</string>

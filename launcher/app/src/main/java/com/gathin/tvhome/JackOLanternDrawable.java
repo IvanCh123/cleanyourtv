@@ -20,7 +20,7 @@ import java.util.Random;
  * online and goes dark when the connection drops. The candle's brightness follows the signal level (1 to 4) and
  * flickers a little while started; Ethernet burns steady. It is two pictures of the same pumpkin, dark and lit
  * (from Microsoft's Fluent Emoji 3D, MIT), cross-faded, so it reads like the other skin's photo-real icons rather
- * than a drawing. Frames run at about 15 fps only while the candle burns or fades; nothing is allocated per frame.
+ * than a drawing. The Christmas skin passes a tree with its lights off and on instead. Frames run at about 15 fps only while the candle burns or fades; nothing is allocated per frame.
  */
 public final class JackOLanternDrawable extends Drawable implements FestiveLamp {
 
@@ -50,9 +50,17 @@ public final class JackOLanternDrawable extends Drawable implements FestiveLamp 
     };
 
     public JackOLanternDrawable(Resources res, float density) {
+        this(res, density, R.drawable.halloween_pumpkin_dark, R.drawable.halloween_pumpkin_lit);
+    }
+
+    /**
+     * The same light from another pair of pictures: the Christmas skin's tree, whose lights are on while
+     * online and off when the connection drops.
+     */
+    public JackOLanternDrawable(Resources res, float density, int darkRes, int litRes) {
         this.density = density;
-        dark = BitmapFactory.decodeResource(res, R.drawable.halloween_pumpkin_dark);
-        lit = BitmapFactory.decodeResource(res, R.drawable.halloween_pumpkin_lit);
+        dark = BitmapFactory.decodeResource(res, darkRes);
+        lit = BitmapFactory.decodeResource(res, litRes);
         Random rnd = new Random(0xC731L);
         for (int i = 0; i < noise.length; i++) noise[i] = rnd.nextFloat();
     }
