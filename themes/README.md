@@ -9,8 +9,17 @@ using `tools/theme.sh --reset` also clears those on-TV column and motion choices
 ```bash
 TV_HOST=192.168.1.50 tools/theme.sh themes/aurora          # push a theme and restart Home
 TV_HOST=192.168.1.50 tools/theme.sh --reset                # back to the built-in config.xml
+TV_HOST=192.168.1.50 tools/theme.sh --as japan themes/japan # store a theme to switch to on the TV
+TV_HOST=192.168.1.50 tools/theme.sh --list                 # the stored themes
+TV_HOST=192.168.1.50 tools/theme.sh --remove japan         # delete one
 powershell -ExecutionPolicy Bypass -File tools\theme.ps1 -TvHost 192.168.1.50 themes\aurora
 ```
+
+A folder replaces the theme Home shows. `--as <name>` stores the same files one folder deeper, under
+`files/themes/<name>/`, so an owner can keep a few looks and switch between them on the TV: hold **OK** on
+**Settings**, then **Themes**. **Default** is the root theme (what a plain push writes); the other rows are
+the stored bundles, by folder name. `--reset` removes the root theme and leaves the bundles alone. The
+repository's keys are described in [Keys](#keys) below.
 
 `tools/venv/bin/python -I tools/manage.py list themes` and `list switches` list them from this file, `show <name>` gives one with its
 screenshot, and `manage.py set <switch> <value> --theme <your folder>` writes a key into a theme folder of your own
@@ -94,6 +103,7 @@ A new key needs one there in the same pull request.
 | `show_greeting` | bool | The greeting above the clock (`true` by default); `false` hides it |
 | `header_white` | bool | The date and the line between the clock and the date in the clock's full white instead of dimmed (`false` by default) |
 | `module_cards` | bool | Look for module cards and ask about them (`true`); `false` turns the feature off |
+| `theme_picker` | bool | A **Themes** row in Home's long-press Settings menu, listing **Default** (the root theme) and each bundle stored with `tools/theme.sh --as`; off by default, and left out while no bundle is stored |
 | `reduced_motion` | bool | Calmer motion for weak GPUs: the highlight slides without bouncing and settles within 5 frames, every animation lasts 90 ms or less, names, the top shelf, the glow and the highlight appear instead of fading, and there is no tile entrance (`false` by default) |
 | `boot_to_live_tv` | bool | Open the Live TV app (`live_tv_package`) on the first Home after the TV starts, once per boot |
 | `open_on_start_choice` | bool | `true` adds an **Open on start** row to Launcher settings: pick an app on the TV, and the first Home after each boot opens it instead (once per boot; `boot_to_live_tv` wins when both are set; an app that is gone or disabled leaves Home on screen). Off by default |
@@ -225,6 +235,32 @@ That evening peak is a fixed reference day, sunrise 07:30 and sunset 19:00 on th
 launcher follows the real sun only when `latitude` and `longitude` are set in
 `launcher/app/src/main/res/values/config.xml`, which is a build setting a theme cannot carry: see
 [docs/sky.md](../docs/sky.md) for the two lines and what still falls back.
+
+## Storing more than one theme
+
+`--as` keeps a theme on the TV without showing it yet:
+
+```bash
+TV_HOST=192.168.1.50 tools/theme.sh --as japan themes/japan
+TV_HOST=192.168.1.50 tools/theme.sh --as halloween themes/halloween
+TV_HOST=192.168.1.50 tools/theme.sh --list
+```
+
+Each name becomes `files/themes/<name>/`, holding the same four files as the root theme (`config.json`,
+`wallpaper.jpg`, `wallpapers/`, `theme_revision`). Home shows the root theme until someone picks another
+from its menu: hold **OK** on **Settings**, choose **Themes**, and choose **Default** or a bundle. The
+choice is kept in Launcher settings and is made on the TV, with no computer needed. A name is 1 to 40
+letters, digits, `_` or `-`, with no dots, so it is always one folder and never a path.
+
+`--reset` removes the root theme only; bundles stay until `--remove <name>`. A bundle that is missing,
+half-written or has an unreadable `config.json` is not listed, and Home falls back to the root theme if it
+was the bundle it showed. Pushing or resetting the root theme, storing or removing a bundle, and switching
+theme each clear the columns, dock opacity and wallpaper picked on the TV for the old theme, so the new one
+starts from its own `config.json`.
+
+`theme_picker` adds the row; it is off unless the launcher's `config.xml` or a theme sets it. With no
+bundle stored the row is left out, since it would offer only **Default**. The launcher's wallpaper picker
+follows the theme in use, not the root folder.
 
 ## Adding a theme
 

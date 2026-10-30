@@ -49,4 +49,32 @@ public class ThemeFilesTest {
         assertFalse(ThemeFiles.isCollection(Arrays.asList("wallpapers", "dusk.jpg")));
         assertFalse(ThemeFiles.isCollection(Collections.singletonList("config.json")));
     }
+
+    @Test public void aBundleHoldsTheSameFilesOneFolderDown() {
+        assertEquals("themes/japan/config.json", ThemeFiles.path(Arrays.asList("themes", "japan", "config.json")));
+        assertEquals("themes/japan/wallpaper.jpg", ThemeFiles.path(Arrays.asList("themes", "japan", "wallpaper.jpg")));
+        assertEquals("themes/japan/wallpapers/dusk.jpg",
+                ThemeFiles.path(Arrays.asList("themes", "japan", "wallpapers", "dusk.jpg")));
+        assertEquals("themes/japan/theme_revision",
+                ThemeFiles.path(Arrays.asList("themes", "japan", "theme_revision")));
+    }
+
+    @Test public void aBundlePathIsOnlyItsAllowedFiles() {
+        assertNull(ThemeFiles.path(Collections.singletonList("themes")));
+        assertNull(ThemeFiles.path(Arrays.asList("themes", "japan")));
+        assertNull(ThemeFiles.path(Arrays.asList("themes", "..", "config.json")));
+        assertNull(ThemeFiles.path(Arrays.asList("themes", "ja pan", "config.json")));
+        assertNull(ThemeFiles.path(Arrays.asList("themes", "japan", "cards.json")));
+        assertNull(ThemeFiles.path(Arrays.asList("themes", "japan", "wallpapers", "run.sh")));
+        assertNull(ThemeFiles.path(Arrays.asList("themes", "japan", "wallpapers", "..", "dusk.jpg")));
+        assertNull(ThemeFiles.path(Arrays.asList("themes", "a", "b", "config.json")));
+    }
+
+    @Test public void onlyTheBundleFolderItselfIsABundleDelete() {
+        assertTrue(ThemeFiles.isBundle(Arrays.asList("themes", "japan")));
+        assertFalse(ThemeFiles.isBundle(Collections.singletonList("themes")));
+        assertFalse(ThemeFiles.isBundle(Arrays.asList("themes", "japan", "config.json")));
+        assertFalse(ThemeFiles.isBundle(Arrays.asList("themes", "..")));
+        assertFalse(ThemeFiles.isBundle(Arrays.asList("wallpapers", "japan")));
+    }
 }

@@ -168,7 +168,7 @@ public final class LauncherSettingsActivity extends Activity {
     }
 
     private void showWallpaperPicker() {
-        File dir = Config.dir(this);
+        File dir = Config.activeDir(this);
         List<File> images = new java.util.ArrayList<>(WallpaperRotation.images(
                 dir == null ? null : new File(dir, "wallpapers")));
         // A theme with a single wallpaper.jpg offers that picture too (Config maps the choice back to it).

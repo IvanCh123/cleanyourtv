@@ -2,22 +2,45 @@
 # wallpapers/ collection) to the launcher on the TV and restart Home. See themes/README.md for the keys.
 #
 # Usage: tools\theme.ps1 -TvHost 192.168.1.50 themes\aurora
-#        tools\theme.ps1 -TvHost 192.168.1.50 -Reset
+#        tools\theme.ps1 -TvHost 192.168.1.50 -As japan themes\japan    # store a bundle, not active
+#        tools\theme.ps1 -TvHost 192.168.1.50 -List                     # the bundles on the TV
+#        tools\theme.ps1 -TvHost 192.168.1.50 -Remove japan             # drop one bundle
+#        tools\theme.ps1 -TvHost 192.168.1.50 -Reset                    # remove the root overlay
 #
-# One argument, and -Reset takes none: both together are refused rather than one of them dropped (below).
-# Exit status as in theme.sh: 0 the theme is on the TV, or the reset ran; 1 the theme could not be pushed; 2 the
-# command line is not one theme folder or -Reset, so nothing was sent.
+# A folder replaces the theme Home shows. -As stores the same files one folder deeper, under files/themes/<name>/,
+# where Home's long-press Settings menu lists it (Themes) beside the root theme, called Default. A bundle stays
+# until -Remove, and -Reset leaves the bundles alone. Exit status as in theme.sh: 0 the theme is on the TV, the
+# bundle was stored or removed, or the list/reset ran; 1 the theme could not be pushed; 2 the command line is not
+# one of the shapes above, so nothing was sent.
 param(
     [Parameter(Position = 0)][string]$Theme,
+    [string]$As,
+    [switch]$List,
+    [string]$Remove,
     [switch]$Reset,
     [string]$TvHost = $env:TV_HOST
 )
-# theme.sh judges its own command line here, and this is the same judgement: -Reset removes the theme from the
-# TV and a folder pushes it, so `-Reset themes\aurora` used to take the reset branch and throw the folder away
-# (the theme the reader named was removed instead of pushed), while `themes\aurora -Reset` pushed the theme and
-# ignored the reset. Nothing is sent for either.
-if ($Theme -and $Reset) {
-    [Console]::Error.WriteLine("theme.ps1 takes one argument, a theme folder or -Reset: $Theme would not have been used, and -Reset removes the theme from the TV while a folder pushes it, so the two cannot share a command line. Nothing was sent to the TV.")
+$usage = 'usage: theme.ps1 <theme folder> | -As <name> <theme folder> | -List | -Remove <name> | -Reset'
+# theme.sh judges its own command line here, and this is the same judgement: one shape per run, and -Reset,
+# -List and -Remove never share a line with a folder. `-Reset themes\aurora` used to take the reset branch and
+# throw the folder away, so nothing is sent for a line this script cannot read.
+if ($Reset) {
+    if ($List -or $Remove -or $As -or $Theme) { [Console]::Error.WriteLine("theme.ps1 -Reset takes no other argument. Nothing was sent to the TV."); exit 2 }
+} elseif ($List) {
+    if ($Remove -or $As -or $Theme) { [Console]::Error.WriteLine("theme.ps1 -List takes no other argument. Nothing was sent to the TV."); exit 2 }
+} elseif ($Remove) {
+    if ($As -or $Theme) { [Console]::Error.WriteLine("theme.ps1 -Remove takes one bundle name. Nothing was sent to the TV."); exit 2 }
+} elseif ($As) {
+    if (-not $Theme) { [Console]::Error.WriteLine($usage); exit 2 }
+} elseif (-not $Theme) {
+    [Console]::Error.WriteLine($usage)
+    exit 2
+}
+# A bundle name becomes a folder under files/themes/ and a path inside the provider's URI, so it keeps to the
+# characters a theme folder can use here: no dots (no "..", no hidden names) and no spaces.
+$bundle = if ($As) { $As } else { $Remove }
+if ($bundle -and $bundle -notmatch '^[A-Za-z0-9_-]{1,40}$') {
+    [Console]::Error.WriteLine("unsupported bundle name: $bundle (letters, digits, _ and -, up to 40). Nothing was sent to the TV.")
     exit 2
 }
 $ErrorActionPreference = 'Stop'
@@ -60,17 +83,38 @@ function Drop($name) { "rm -f $dir/$name 2>/dev/null; content delete --uri $uri/
 # The collection a theme can push. A push empties it before writing the theme's own pictures, and -Reset has to
 # empty it too: the launcher's wallpaper picker lists that folder itself, and an on-TV pick of one of its
 # pictures is read back from it, so a reset that left the pictures behind still shows the theme it just removed.
-# Both paths use this one string (the same one theme.sh has).
-$clearWallpapers = "mkdir -p $dir/wallpapers 2>/dev/null; rm -f $dir/wallpapers/*.[jJ][pP][gG] $dir/wallpapers/*.[jJ][pP][eE][gG] $dir/wallpapers/*.[pP][nN][gG] $dir/wallpapers/*.[wW][eE][bB][pP] 2>/dev/null; content delete --uri $uri/wallpapers 2>/dev/null"
+# $prefix is "" for the root theme and "themes/<name>/" for a bundle (the same string theme.sh builds).
+function Clear-Wallpapers($prefix) { "mkdir -p $dir/${prefix}wallpapers 2>/dev/null; rm -f $dir/${prefix}wallpapers/*.[jJ][pP][gG] $dir/${prefix}wallpapers/*.[jJ][pP][eE][gG] $dir/${prefix}wallpapers/*.[pP][nN][gG] $dir/${prefix}wallpapers/*.[wW][eE][bB][pP] 2>/dev/null; content delete --uri $uri/${prefix}wallpapers 2>/dev/null" }
 
+if ($List) {
+    # Only a folder with a config.json is a bundle the picker can show, which is also what ThemeDir.bundles reads.
+    $out = Invoke-Tv tv.py "for d in $dir/themes/*/; do [ -f `"`$d/config.json`" ] && basename `"`$d`"; done 2>/dev/null"
+    $names = @($out | Where-Object { $_ -and $_.Trim() })
+    if ($names.Count -eq 0) {
+        Write-Host 'no theme bundles on the TV (store one with: theme.ps1 -As <name> <theme folder>)'
+    } else {
+        Write-Host 'theme bundles on the TV:'
+        $names | ForEach-Object { Write-Host "  $_" }
+    }
+    exit 0
+}
+if ($Remove) {
+    Invoke-Tv tv.py "rm -rf $dir/themes/$Remove 2>/dev/null; content delete --uri $uri/themes/$Remove 2>/dev/null" | Out-Null
+    & $py -I theme_restart.py
+    if ($LASTEXITCODE) { throw 'Home restart recovery failed' }
+    Write-Host 'removed'
+    Write-Host "Bundle $Remove is off the TV. If it was the theme Home showed, Home falls back to the root theme (Default)."
+    exit 0
+}
 if ($Reset) {
-    Invoke-Tv tv.py "mkdir -p $dir 2>/dev/null; $(Drop 'config.json'); $(Drop 'wallpaper.jpg'); $(Drop 'wallpapers/captions.txt'); $clearWallpapers; printf '%s' '$revision' > $tmp-theme_revision; $(Put 'theme_revision')" | Out-Null
+    Invoke-Tv tv.py "mkdir -p $dir 2>/dev/null; $(Drop 'config.json'); $(Drop 'wallpaper.jpg'); $(Drop 'wallpapers/captions.txt'); $(Clear-Wallpapers ''); printf '%s' '$revision' > $tmp-theme_revision; $(Put 'theme_revision')" | Out-Null
     & $py -I theme_restart.py
     if ($LASTEXITCODE) { throw 'Home restart recovery failed' }
     Write-Host 'reset'
+    Write-Host 'The root theme is off the TV. Bundles stored with -As are still there, and a bundle Home is showing'
+    Write-Host 'stays until you pick Default in the Themes menu.'
     exit 0
 }
-if (-not $Theme) { [Console]::Error.WriteLine('usage: theme.ps1 <theme folder> | -Reset'); exit 2 }
 $config = Join-Path $Theme 'config.json'
 if (-not (Test-Path $config)) { throw "no config.json in $Theme" }
 try { $themeJson = Get-Content $config -Raw | ConvertFrom-Json } catch { throw "$config is not valid JSON" }
@@ -90,27 +134,47 @@ if (Test-Path $wallpapers -PathType Container) {
         if ($image.Name -notmatch '^[A-Za-z0-9_.-]+$' -or $image.Name.Contains('..')) { throw "unsupported wallpaper filename: $($image.Name)" }
     }
 }
+# A bundle is the same files one folder deeper. A store writes the pictures first and config.json last, so a
+# half-finished -As leaves a folder ThemeDir.bundles does not list.
+$prefix = if ($As) { "themes/$As/" } else { '' }
+function Push-Config {
+    Invoke-Tv tv.py --push $config (Stage "${prefix}config.json") | Out-Null
+    Invoke-Tv tv.py (Put "${prefix}config.json") | Out-Null
+}
+function Push-Pictures {
+    $wall = Join-Path $Theme 'wallpaper.jpg'
+    if (Test-Path $wall) { Invoke-Tv b64push.py $wall (Stage "${prefix}wallpaper.jpg"); Invoke-Tv tv.py (Put "${prefix}wallpaper.jpg") | Out-Null } else { Invoke-Tv tv.py (Drop "${prefix}wallpaper.jpg") | Out-Null }
+    Invoke-Tv tv.py (Clear-Wallpapers $prefix) | Out-Null
+    foreach ($image in $images) {
+        Invoke-Tv b64push.py $image.FullName (Stage "${prefix}wallpapers/$($image.Name)")
+        Invoke-Tv tv.py (Put "${prefix}wallpapers/$($image.Name)") | Out-Null
+    }
+    # The collection's names (wallpaper_captions); a theme without them leaves no stale names behind.
+    $captions = Join-Path $Theme 'wallpapers/captions.txt'
+    if (Test-Path $captions -PathType Leaf) {
+        Invoke-Tv b64push.py $captions (Stage "${prefix}wallpapers/captions.txt")
+        Invoke-Tv tv.py (Put "${prefix}wallpapers/captions.txt") | Out-Null
+    } else {
+        Invoke-Tv tv.py (Drop "${prefix}wallpapers/captions.txt") | Out-Null
+    }
+}
+function Push-Revision {
+    Invoke-Tv tv.py "printf '%s' '$revision' > $(Stage "${prefix}theme_revision"); $(Put "${prefix}theme_revision")" | Out-Null
+}
 
 # Tolerated, as in theme.sh: a TV that locks Android/data still takes the files through ThemeProvider.
-Invoke-Tv tv.py "mkdir -p $dir 2>/dev/null; true" | Out-Null
-Invoke-Tv tv.py --push $config "$tmp-config.json" | Out-Null
-Invoke-Tv tv.py (Put 'config.json')
-$wall = Join-Path $Theme 'wallpaper.jpg'
-if (Test-Path $wall) { Invoke-Tv b64push.py $wall "$tmp-wallpaper.jpg"; Invoke-Tv tv.py (Put 'wallpaper.jpg') } else { Invoke-Tv tv.py (Drop 'wallpaper.jpg') | Out-Null }
-Invoke-Tv tv.py $clearWallpapers | Out-Null
-foreach ($image in $images) {
-    Invoke-Tv b64push.py $image.FullName (Stage "wallpapers/$($image.Name)")
-    Invoke-Tv tv.py (Put "wallpapers/$($image.Name)") | Out-Null
+Invoke-Tv tv.py "mkdir -p $dir/$prefix 2>/dev/null; true" | Out-Null
+if ($As) {
+    Push-Pictures
+    Push-Config
+    Push-Revision
+    Write-Host 'stored'
+    Write-Host "Theme $(Split-Path $Theme -Leaf) is on the TV as bundle $As. Pick it on Home: hold Settings, then Themes."
+    exit 0
 }
-# The collection's names (wallpaper_captions); a theme without them leaves no stale names behind.
-$captions = Join-Path $Theme 'wallpapers\captions.txt'
-if (Test-Path $captions -PathType Leaf) {
-    Invoke-Tv b64push.py $captions (Stage 'wallpapers/captions.txt')
-    Invoke-Tv tv.py (Put 'wallpapers/captions.txt') | Out-Null
-} else {
-    Invoke-Tv tv.py (Drop 'wallpapers/captions.txt') | Out-Null
-}
-Invoke-Tv tv.py "printf '%s' '$revision' > $tmp-theme_revision; $(Put 'theme_revision')" | Out-Null
+Push-Config
+Push-Pictures
+Push-Revision
 & $py -I theme_restart.py
 if ($LASTEXITCODE) { throw 'Home restart recovery failed' }
 Write-Host 'applied'

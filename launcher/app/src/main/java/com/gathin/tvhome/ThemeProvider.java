@@ -16,8 +16,10 @@ import java.io.FileNotFoundException;
  *
  *   content write --uri content://com.gathin.tvhome.theme/config.json < /data/local/tmp/config.json
  *   content write --uri content://com.gathin.tvhome.theme/wallpapers/dusk.jpg < /data/local/tmp/dusk.jpg
+ *   content write --uri content://com.gathin.tvhome.theme/themes/japan/config.json < /data/local/tmp/config.json
  *   content delete --uri content://com.gathin.tvhome.theme/config.json
  *   content delete --uri content://com.gathin.tvhome.theme/wallpapers      (every image in the collection)
+ *   content delete --uri content://com.gathin.tvhome.theme/themes/japan    (the whole bundle)
  */
 public class ThemeProvider extends ContentProvider {
 
@@ -50,11 +52,23 @@ public class ThemeProvider extends ContentProvider {
             if (images != null) for (File f : images) if (f.delete()) n++;
             return n;
         }
+        if (dir != null && ThemeFiles.isBundle(uri.getPathSegments())) {
+            return deleteTree(new File(new File(dir, ThemeDir.FOLDER), uri.getPathSegments().get(1)));
+        }
         try {
             return file(uri).delete() ? 1 : 0;
         } catch (FileNotFoundException e) {
             return 0;
         }
+    }
+
+    /** Removes a bundle folder and counts the files it held, so the answer reads like the other deletes. */
+    private static int deleteTree(File file) {
+        if (file == null || !file.exists()) return 0;
+        int n = 0;
+        File[] children = file.listFiles();
+        if (children != null) for (File child : children) n += deleteTree(child);
+        return (file.delete() ? 1 : 0) + n;
     }
 
     @Override public boolean onCreate() { return true; }

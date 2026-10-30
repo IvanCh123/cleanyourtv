@@ -238,6 +238,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private float density;
     /** Module cards (res/values/config.xml, module_cards): discovered on resume, shown only after the owner's Show. */
     private boolean moduleCards;
+    /** A Themes row in the long-press Settings menu (config.xml theme_picker), for the bundles under files/themes/. */
+    private boolean themePicker;
     /** config settings_key_keycodes / settings_key_panel, so the Settings button works on Home without HomeKeyService. */
     private int[] settingsKeycodes = new int[0];
     private boolean settingsKeyPanel;
@@ -560,6 +562,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         vpnPill = cfg.vpnPill && !cfg.topMenu;
         btnVpn = findViewById(R.id.btnVpn);
         moduleCards = cfg.moduleCards;
+        themePicker = cfg.themePicker;
         hiddenApps = new HashSet<>(cfg.hiddenApps);
         libraryExcludedApps = new HashSet<>(cfg.libraryExcludedApps);
 
@@ -3520,6 +3523,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         PopupWindow popup = glassPopup(panel, (int) (200 * density));
         if (!launcherSettingsButton) addSettingsMenuRow(rows, popup, R.string.launcher_settings, () -> startActivityForResult(
                 new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST));
+        // Theme bundles stored under files/themes/ (tools/theme.sh --as <name>). With none there the list would
+        // offer only Default, so the row stays off the menu until one exists.
+        if (themePicker && !ThemeDir.bundles(Config.dir(this)).isEmpty()) {
+            addSettingsMenuRow(rows, popup, R.string.themes_label, () -> ThemePicker.show(this, this::recreate));
+        }
         // Firmware that ships its own settings app next to the AOSP one (Xiaomi China is one): the
         // vendor app holds pages the AOSP settings has no row for, such as Account & Security with
         // the ADB switch. Offered here only while one of them is installed.

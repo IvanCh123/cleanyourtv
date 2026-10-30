@@ -293,10 +293,39 @@ class ThemePushTest(unittest.TestCase):
                 self.assertNotIn("applied", result.stdout)
                 self.assertNotIn("reset", result.stdout)
 
+    def test_a_bundle_store_writes_its_own_files_and_leaves_the_root_theme(self):
+        """--as pushes one folder deeper; the staging name follows the prefix, or the file never lands."""
+        (self.theme / "wallpaper.jpg").write_bytes(b"\xff\xd8wallpaper")
+        result = self.run_theme("--as", "japan", str(self.theme))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("stored", result.stdout)
+        self.assertNotIn("applied", result.stdout, "a store does not restart Home")
+        bundle = self.device / "themes" / "japan"
+        self.assertEqual((bundle / "config.json").read_bytes(), self.config,
+                         "the bundle's config.json has to land: ThemeDir.bundles reads it")
+        self.assertEqual((bundle / "wallpaper.jpg").read_bytes(), b"\xff\xd8wallpaper",
+                         "b64push stages the wallpaper under the bundle's name")
+        self.assertTrue((bundle / "theme_revision").is_file())
+        self.assertFalse((self.device / "config.json").exists(), "a store must not touch the root theme")
+        puts = [c for c in self.shell_commands() if "content write" in c]
+        config = next(i for i, c in enumerate(puts) if "themes/japan/config.json" in c)
+        wallpaper = next(i for i, c in enumerate(puts) if "themes/japan/wallpaper.jpg" in c)
+        self.assertLess(wallpaper, config,
+                        "the pictures come first, so a half-finished store leaves no folder to list")
+
+    def test_a_bundle_remove_deletes_the_folder(self):
+        (self.device / "themes" / "japan").mkdir(parents=True)
+        (self.device / "themes" / "japan" / "config.json").write_bytes(b"{}")
+        result = self.run_theme("--remove", "japan")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("removed", result.stdout)
+        self.assertFalse((self.device / "themes" / "japan").exists())
+
     def test_both_windows_paths_check_the_shared_helper_exit_code(self):
         script = (TOOLS / "theme.ps1").read_text(encoding="utf-8")
-        self.assertEqual(script.count("& $py -I theme_restart.py"), 2)
-        self.assertEqual(script.count("if ($LASTEXITCODE) { throw 'Home restart recovery failed' }"), 2)
+        # A bundle store never restarts Home; --remove, --reset and a plain push all do.
+        self.assertEqual(script.count("& $py -I theme_restart.py"), 3)
+        self.assertEqual(script.count("if ($LASTEXITCODE) { throw 'Home restart recovery failed' }"), 3)
         self.assertNotIn("$restart =", script)
 
     def test_the_windows_script_puts_files_the_same_way(self):
@@ -353,10 +382,10 @@ class ThemePushTest(unittest.TestCase):
         script = (TOOLS / "theme.ps1").read_text(encoding="utf-8")
         reset = next(line for line in script.splitlines() if line.strip().startswith("Invoke-Tv tv.py \"mkdir -p $dir"))
         self.assertIn("$(Drop 'wallpapers/captions.txt')", reset)
-        self.assertIn("$clearWallpapers", reset, "one shared clear, as in theme.sh")
-        clear = next(line for line in script.splitlines() if line.startswith("$clearWallpapers = "))
-        self.assertIn("rm -f $dir/wallpapers/*.[jJ][pP][gG]", clear)
-        self.assertIn("content delete --uri $uri/wallpapers", clear)
+        self.assertIn("$(Clear-Wallpapers '')", reset, "one shared clear, as in theme.sh")
+        clear = next(line for line in script.splitlines() if line.startswith("function Clear-Wallpapers("))
+        self.assertIn("rm -f $dir/${prefix}wallpapers/*.[jJ][pP][gG]", clear)
+        self.assertIn("content delete --uri $uri/${prefix}wallpapers", clear)
         self.assertNotIn("captions", clear, "the captions file is dropped on its own line, as in theme.sh")
 
 

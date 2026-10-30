@@ -101,6 +101,8 @@ final class Config {
     /** Name after the greeting ("Good morning, Mr. Trịnh"); empty for the greeting alone. */
     final String greetingName;
     final boolean moduleCards;
+    /** A Themes row in Home's long-press Settings menu for the bundles under files/themes/ (config.xml, theme_picker). */
+    final boolean themePicker;
     /** Calmer motion for weak GPUs (config.xml, reduced_motion): stiff spring, short fades, no replay. */
     final boolean reducedMotion;
     /** Open the Live TV app on the first Home after the TV starts (config.xml, boot_to_live_tv). */
@@ -281,7 +283,7 @@ final class Config {
                    boolean keyFilter, boolean dockGlass, String glowStyle, boolean wallpaperCaptions,
                    boolean handleViewInputs, boolean tileMenu, boolean dockEvenPadding, boolean dockBand, boolean cinematicDots, boolean cinematicWhiteFocus, boolean wifiStatusColor, int cinematicScrim, int cinematicArt,
                    Map<String, Set<String>> wallpaperMoods, boolean gamepadPassthrough, boolean consumeVolumeKeys, boolean powerOnHome, boolean homeLongPressHome, boolean wifiStatusWarnings, List<String> topBarApps, boolean showGreeting, boolean headerWhite, boolean clockWallpaper, int clockWallpaperDim, boolean clockGlow, String glassStyle, boolean singleRow, boolean dockBandAll, boolean lunarDate, int lunarUtcOffset, boolean dateBelowClock, boolean vpnPill, String locale, boolean powerOnHomeAlways, boolean inputsConnectedOnly,
-                   int openOnStartNetworkWait, boolean iconOnlyVpn) {
+                   int openOnStartNetworkWait, boolean iconOnlyVpn, boolean themePicker) {
         this.handleViewInputs = handleViewInputs;
         this.tileMenu = tileMenu;
         this.inputKeycodes = inputKeycodes;
@@ -318,6 +320,7 @@ final class Config {
         this.locale = locale;
         this.greetingName = greetingName;
         this.moduleCards = moduleCards;
+        this.themePicker = themePicker;
         this.reducedMotion = reducedMotion;
         this.bootToLiveTv = bootToLiveTv;
         this.openOnStartChoice = openOnStartChoice;
@@ -413,6 +416,12 @@ final class Config {
         return ctx.getExternalFilesDir(null);
     }
 
+    /** The folder of the theme Home is showing: the bundle named in Launcher settings, or the root theme. */
+    static File activeDir(Context ctx) {
+        return ThemeDir.active(dir(ctx),
+                ctx.getSharedPreferences(SETTINGS_NAME, Context.MODE_PRIVATE).getString(ThemeDir.KEY, ""));
+    }
+
     static Config load(Context ctx) {
         Resources res = ctx.getResources();
         List<String> dock = new ArrayList<>(Arrays.asList(res.getStringArray(R.array.dock_apps)));
@@ -442,6 +451,7 @@ final class Config {
         int lunarOffset = -1;
         String greetingName = res.getString(R.string.greeting_name).trim();
         boolean moduleCards = res.getBoolean(R.bool.module_cards);
+        boolean themePicker = res.getBoolean(R.bool.theme_picker);
         boolean reducedMotion = res.getBoolean(R.bool.reduced_motion);
         boolean bootToLiveTv = res.getBoolean(R.bool.boot_to_live_tv);
         boolean openOnStartChoice = res.getBoolean(R.bool.open_on_start_choice);
@@ -518,10 +528,18 @@ final class Config {
         boolean dockBandAll = res.getBoolean(R.bool.dock_band_all);
         boolean applied = false;
 
-        File dir = dir(ctx);
+        File root = dir(ctx);
+        SharedPreferences choices = ctx.getSharedPreferences(SETTINGS_NAME, Context.MODE_PRIVATE);
+        String themeChoice = choices.getString(ThemeDir.KEY, "");
+        if (!themeChoice.isEmpty() && ThemeDir.resolve(root, themeChoice) == null) {
+            // The bundle is gone: fall back to the root theme rather than a choice the picker cannot show.
+            choices.edit().remove(ThemeDir.KEY).apply();
+            themeChoice = "";
+        }
+        File dir = ThemeDir.active(root, themeChoice);
         File file = dir != null ? new File(dir, FILE_NAME) : null;
         boolean mounted = Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState());
-        JSONObject json = readOverlay(ctx, file, mounted);
+        JSONObject json = readOverlay(ctx, file, mounted, themeChoice);
         if (json != null) {
             applied = true;
             dock = stringList(json, "dock_apps", dock);
@@ -551,6 +569,7 @@ final class Config {
             lunarOffset = integer(json, "lunar_utc_offset", lunarOffset, -1, 14);
             greetingName = string(json, "greeting_name", greetingName).trim();
             moduleCards = bool(json, "module_cards", moduleCards);
+            themePicker = bool(json, "theme_picker", themePicker);
             reducedMotion = bool(json, "reduced_motion", reducedMotion);
             bootToLiveTv = bool(json, "boot_to_live_tv", bootToLiveTv);
             openOnStartChoice = bool(json, "open_on_start_choice", openOnStartChoice);
@@ -631,9 +650,8 @@ final class Config {
         for (String pkg : topBarApps) if (!hidden.contains(pkg)) hidden.add(pkg);
         // A theme push or reset invalidates choices made on the TV. On first use, remember the
         // current theme without clearing choices from an older launcher version.
-        SharedPreferences choices = ctx.getSharedPreferences(SETTINGS_NAME, Context.MODE_PRIVATE);
         // Unmounted storage looks like a theme reset; compare only once the file is readable.
-        if (mounted) syncThemeChoices(choices, dir, file);
+        if (mounted) syncThemeChoices(choices, dir, file, ThemeDir.signature(root, themeChoice));
         int chosenColumns = choices.getInt("columns", columns);
         if (chosenColumns >= 4 && chosenColumns <= 7) columns = chosenColumns;
         int chosenRows = choices.getInt(ROWS_BELOW_DOCK_KEY, rowsBelow);
@@ -688,7 +706,7 @@ final class Config {
                 consumeVolumeKeys, powerOnHome, homeLongPressHome, wifiStatusWarnings, topBarApps, showGreeting, headerWhite, clockWallpaper,
                 Math.max(0, Math.min(90, clockWallpaperDim)), clockGlow, glassStyle, singleRow && dockRow, dockBandAll, lunar, lunarOffset,
                 dateBelowClock, vpnPill, locale, powerOnHomeAlways, inputsConnectedOnly,
-                Math.max(0, Math.min(600, openOnStartNetworkWait)), iconOnlyVpn);
+                Math.max(0, Math.min(600, openOnStartNetworkWait)), iconOnlyVpn, themePicker);
     }
 
     /**
@@ -721,10 +739,10 @@ final class Config {
         return races;
     }
 
-    private static void syncThemeChoices(SharedPreferences choices, File dir, File config) {
+    private static void syncThemeChoices(SharedPreferences choices, File dir, File config, String bundle) {
         File revision = dir == null ? null : new File(dir, THEME_REVISION_NAME);
         String token = revisionToken(revision);
-        String signature = fileStamp(config) + ":" + token;
+        String signature = bundle + ":" + fileStamp(config) + ":" + token;
         String seen = choices.getString(THEME_SIGNATURE_KEY, null);
         if (seen == null) {
             // Existing preferences survive an app upgrade, unless the first launch follows an
@@ -767,20 +785,30 @@ final class Config {
      * start before the card is mounted (seen at every boot on a Xiaomi MiTV-MTEQ0), and without the copy it comes
      * up with the built-in dock order. A missing file on mounted storage still means no overlay.
      */
-    private static JSONObject readOverlay(Context ctx, File file, boolean mounted) {
-        File copy = new File(ctx.getFilesDir(), FILE_NAME);
+    private static JSONObject readOverlay(Context ctx, File file, boolean mounted, String bundle) {
+        File copy = overlayCopy(ctx, bundle);
         if (!mounted) return read(copy);
         JSONObject json = read(file);
         if (json == null) {
             copy.delete();
         } else {
-            try (FileOutputStream out = new FileOutputStream(copy)) {
-                out.write(json.toString().getBytes(StandardCharsets.UTF_8));
+            try {
+                File parent = copy.getParentFile();
+                if (parent != null) parent.mkdirs();
+                try (FileOutputStream out = new FileOutputStream(copy)) {
+                    out.write(json.toString().getBytes(StandardCharsets.UTF_8));
+                }
             } catch (IOException e) {
                 Log.w(TAG, "could not keep a copy of " + file + ": " + e.getMessage());
             }
         }
         return json;
+    }
+
+    /** The copy read before external storage is mounted: one per selection, so a bundle switch cannot show the other theme. */
+    private static File overlayCopy(Context ctx, String bundle) {
+        return bundle.isEmpty() ? new File(ctx.getFilesDir(), FILE_NAME)
+                : new File(new File(ctx.getFilesDir(), "overlay"), bundle + ".json");
     }
 
     private static JSONObject read(File file) {

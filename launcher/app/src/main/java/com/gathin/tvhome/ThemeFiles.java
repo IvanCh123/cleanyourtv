@@ -12,9 +12,25 @@ final class ThemeFiles {
 
     private ThemeFiles() {}
 
-    /** The path relative to the theme directory, e.g. "config.json" or "wallpapers/dusk.jpg", or null if refused. */
+    /**
+     * The path relative to the theme directory, e.g. "config.json", "wallpapers/dusk.jpg" or
+     * "themes/japan/config.json", or null if refused. The root files are what tools/theme.sh has always
+     * written; a bundle is the same set of files one folder down.
+     */
     static String path(List<String> segments) {
-        if (segments == null) return null;
+        if (segments == null || segments.isEmpty()) return null;
+        if (ThemeDir.FOLDER.equals(segments.get(0))) {
+            // themes/<name> itself is only a delete (isBundle), never a file to open.
+            if (segments.size() < 2 || !ThemeDir.validName(segments.get(1))) return null;
+            String inner = plain(segments.subList(2, segments.size()));
+            return inner == null ? null : ThemeDir.FOLDER + "/" + segments.get(1) + "/" + inner;
+        }
+        return plain(segments);
+    }
+
+    /** The files at the root of the theme folder. */
+    private static String plain(List<String> segments) {
+        if (segments == null || segments.isEmpty()) return null;
         if (segments.size() == 1) {
             String name = segments.get(0);
             return Config.FILE_NAME.equals(name) || "wallpaper.jpg".equals(name) || "theme_revision".equals(name)
@@ -30,6 +46,12 @@ final class ThemeFiles {
     /** True for "wallpapers" alone: a delete of it clears the collection's images. */
     static boolean isCollection(List<String> segments) {
         return segments != null && segments.size() == 1 && WALLPAPERS.equals(segments.get(0));
+    }
+
+    /** True for "themes/<name>" alone: a delete of it removes that bundle from the TV. */
+    static boolean isBundle(List<String> segments) {
+        return segments != null && segments.size() == 2 && ThemeDir.FOLDER.equals(segments.get(0))
+                && ThemeDir.validName(segments.get(1));
     }
 
     static boolean collectionImage(String name) {

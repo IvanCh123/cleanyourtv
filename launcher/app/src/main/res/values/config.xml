@@ -42,6 +42,12 @@
          "boot_to_live_tv": true in a theme's config.json. -->
     <bool name="boot_to_live_tv">false</bool>
 
+    <!-- A Themes row in Home's long-press Settings menu, for the theme bundles the PC stores under
+         files/themes/<name>/ (theme.sh as, theme.ps1 -As). It lists Default (the root theme, what
+         theme.sh pushes) and each bundle; with no bundle stored the row is left out.
+         On for this TV; false keeps the menu as it was, and a theme can set "theme_picker" too. -->
+    <bool name="theme_picker">true</bool>
+
     <!-- An "Open on start" row in Launcher settings: pick any app on the TV, and the first time Home comes up
          after the TV starts it opens that app instead. Once per boot, like boot_to_live_tv (which wins when
          both are set); Home after that stays Home, and an app that is gone or disabled leaves Home on screen.
