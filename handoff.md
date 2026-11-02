@@ -6,7 +6,7 @@ safety rules there still apply.
 ## The TV
 - TCL Smart TV Pro, device `G08`, product `G08_4K_GB`, Android 14 (Google TV), firmware `UTT2.250416.001 AU02`,
   MediaTek tcl9618, 32-bit userspace (armeabi-v7a), SDK 34.
-- On **Ethernet** (`eth0`), LAN address `192.168.68.100`. No saved Wi-Fi networks. Nothing plugged into USB.
+- On **Ethernet** (`eth0`), LAN address by DHCP (it moved from .100 to .103 on 2 November; find it with `adb mdns services`). No saved Wi-Fi networks. Nothing plugged into USB.
 - Signed in to a Google account. The closest repo lists are `examples/tcl-g08-us-google-tv` (same Android 14 build
   family) and `examples/tcl-g08-au-android12`.
 
@@ -107,6 +107,7 @@ Then, on the owner's request:
   kinds `GIFT` and `SNOWFLAKE`), snow over the first Home of the day (`PetalShowerView.setSnow`), "Merry Christmas"
   in the 12 languages that have the Halloween greeting, holly-red accent `#E8433A` (`Festival.CHRISTMAS`, `HOLLY`).
   Icons are Fluent Emoji 3D (MIT), 72 px WebP, noted in `launcher/ICONS-LICENSE-FLUENT-EMOJI.txt`.
+- **Halloween** (2 November): the seven Wikimedia photos were removed; the theme keeps only the drawn haunted house (CC0), with no rotation.
 - **`themes/christmas/`**: four flat illustrations drawn in code by `themes/christmas/make_wallpapers.py` (CC0, in the
   style of Halloween's haunted house; the owner did not like the photos tried first): a cabin, a decorated tree with
   presents and a snowman, a village with string lights, Santa's sleigh across the moon. Lifted so each scene ends where

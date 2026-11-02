@@ -4,8 +4,6 @@
   "accent_color": "#FF7A1A",
   "background_color": "#07050B",
   "wallpaper": true,
-  "wallpaper_rotation_minutes": 30,
-  "wallpaper_order": "sequential",
   "wallpaper_captions": false,
   "wallpaper_dim": 12,
   "wallpaper_true_color": true,
