@@ -107,7 +107,7 @@ Then, on the owner's request:
   kinds `GIFT` and `SNOWFLAKE`), snow over the first Home of the day (`PetalShowerView.setSnow`), "Merry Christmas"
   in the 12 languages that have the Halloween greeting, holly-red accent `#E8433A` (`Festival.CHRISTMAS`, `HOLLY`).
   Icons are Fluent Emoji 3D (MIT), 72 px WebP, noted in `launcher/ICONS-LICENSE-FLUENT-EMOJI.txt`.
-- **Halloween** (2 November): the seven Wikimedia photos were removed; the theme keeps only the drawn haunted house (CC0), with no rotation.
+- **Halloween** (2 November): the seven Wikimedia photos were removed; the theme keeps only the drawn haunted house (CC0) as `wallpaper.jpg`: without `wallpaper_rotation_minutes` the launcher ignores a `wallpapers/` folder, so a one-picture theme left in there shows a blank background.
 - **`themes/christmas/`**: four flat illustrations drawn in code by `themes/christmas/make_wallpapers.py` (CC0, in the
   style of Halloween's haunted house; the owner did not like the photos tried first): a cabin, a decorated tree with
   presents and a snowman, a village with string lights, Santa's sleigh across the moon. Lifted so each scene ends where
